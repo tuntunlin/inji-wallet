@@ -9,12 +9,13 @@ import OpenID4VP from '../../shared/openID4VP/OpenID4VP';
 import {VCFormat} from '../../shared/VCFormat';
 import {KeyTypes} from '../../shared/cryptoutil/KeyTypes';
 import {getMdocAuthenticationAlorithm} from '../../components/VC/common/VCUtils';
-import {isIOS} from '../../shared/constants';
-import {canonicalize} from '../../shared/Utils';
+import {isIOS, JWT_ALG_TO_KEY_TYPE} from '../../shared/constants';
+import {canonicalize, getVerifierKey} from '../../shared/Utils';
 import {
   constructDetachedJWT,
   isClientValidationRequired,
 } from '../../shared/openID4VP/OpenID4VPHelper';
+import {NativeModules} from 'react-native';
 
 const signatureSuite = 'JsonWebSignature2020';
 
@@ -35,6 +36,41 @@ export const openID4VPServices = () => {
       );
     },
 
+    isVerifierTrusted: (context: any) => async () => {
+      const {RNSecureKeystoreModule} = NativeModules;
+      const verifier = context.authenticationResponse?.client_id;
+      try {
+        return await RNSecureKeystoreModule.hasAlias(getVerifierKey(verifier));
+      } catch (error) {
+        console.error(
+          `Error while checking verifier client ID in trusted verifiers:`,
+          error,
+        );
+        return false;
+      }
+    },
+
+    storeTrustedVerifier: (context: any) => async () => {
+      const {RNSecureKeystoreModule} = NativeModules;
+      const verifier = context.authenticationResponse?.client_id;
+      const trustValue = JSON.stringify({
+        trusted: true,
+        createdAt: new Date().toISOString(),
+      });
+      try {
+        return await RNSecureKeystoreModule.storeData(
+          getVerifierKey(verifier),
+          trustValue,
+        );
+      } catch (error) {
+        console.error(
+          `Error while storing verifier client ID in trusted verifiers:`,
+          error,
+        );
+        return false;
+      }
+    },
+
     getKeyPair: async (context: any) => {
       if (!!(await hasKeyPair(context.keyType))) {
         return await fetchKeyPair(context.keyType);
@@ -51,6 +87,7 @@ export const openID4VPServices = () => {
 
       const unSignedVpTokens = await OpenID4VP.constructUnsignedVPToken(
         context.selectedVCs,
+        context.selectedDisclosuresByVc,
         holderId,
         signatureSuite,
       );
@@ -132,6 +169,32 @@ export const openID4VPServices = () => {
           );
 
           vpTokenSigningResultMap[formatType] = signedData;
+        } else if (
+          formatType === VCFormat.vc_sd_jwt.valueOf() ||
+          formatType === VCFormat.dc_sd_jwt.valueOf()
+        ) {
+          const uuidToUnsignedKBJWT = credentials.uuidToUnsignedKBT;
+          const uuidToSignature: Record<string, string> = {};
+
+          for (const [uuid, unsignedKBJWT] of Object.entries(
+            uuidToUnsignedKBJWT,
+          )) {
+            const header = JSON.parse(atob(unsignedKBJWT.split('.')[0]));
+            const alg = header.alg;
+            const keyType = JWT_ALG_TO_KEY_TYPE[alg];
+            const signature = await createSignature(
+              context.privateKey,
+              unsignedKBJWT,
+              keyType,
+            );
+            if (signature) {
+              uuidToSignature[uuid] = signature;
+            } else {
+              throw new Error(`Failed to create signature for UUID: ${uuid}`);
+            }
+          }
+
+          vpTokenSigningResultMap[formatType] = uuidToSignature;
         }
       }
       return await OpenID4VP.shareVerifiablePresentation(
@@ -140,3 +203,4 @@ export const openID4VPServices = () => {
     },
   };
 };
+
