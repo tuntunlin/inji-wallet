@@ -1,13 +1,13 @@
-import { Dimensions, View } from 'react-native';
-import { Column, Row, Text } from '../../ui';
-import { CustomTooltip } from '../../ui/ToolTip';
-import { Theme } from '../../ui/styleUtils';
+import {Dimensions, View} from 'react-native';
+import {Column, Row, Text} from '../../ui';
+import {CustomTooltip} from '../../ui/ToolTip';
+import {Theme} from '../../ui/styleUtils';
 import React from 'react';
-import { SvgImage } from '../../ui/svg';
-import { useTranslation } from 'react-i18next';
+import {SvgImage} from '../../ui/svg';
+import {useTranslation} from 'react-i18next';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import { STATUS_FIELD_NAME } from './VCUtils';
-import { StatusTooltipContent } from './VcStatustooTip';
+import {STATUS_FIELD_NAME} from './VCUtils';
+import {StatusTooltipContent} from './VcStatustooTip';
 
 export const VCItemFieldName = ({
   fieldName,
@@ -20,7 +20,7 @@ export const VCItemFieldName = ({
   fieldNameColor?: string;
   isDisclosed?: boolean;
 }) => {
-  const { t } = useTranslation('ViewVcModal');
+  const {t} = useTranslation('ViewVcModal');
   return (
     <Row>
       {fieldName && (
@@ -38,14 +38,17 @@ export const VCItemFieldName = ({
           width={Dimensions.get('screen').width * 0.8}
           height={Dimensions.get('screen').height * 0.28}
           triggerComponent={SvgImage.info()}
-          triggerComponentStyles={{ marginLeft: 2, marginTop: 2 }}
-          toolTipContent={
-            <StatusTooltipContent />
-          }
+          triggerComponentStyles={{marginLeft: 2, marginTop: 2}}
+          toolTipContent={<StatusTooltipContent />}
         />
       )}
       {isDisclosed && (
-        <Icon name="share-square-o" size={10} color="#666" style={{ marginLeft: 5, marginTop: 3 }} />
+        <Icon
+          name="share-square-o"
+          size={10}
+          color="#666"
+          style={{marginLeft: 5, marginTop: 3}}
+        />
       )}
     </Row>
   );
@@ -61,14 +64,7 @@ export const VCItemFieldValue = ({
   fieldValueColor?: string;
 }) => {
   if (React.isValidElement(fieldValue)) {
-
-    return (
-      <View
-        testID={`${testID}Value`}
-      >
-        {fieldValue}
-      </View>
-    );
+    return <View testID={`${testID}Value`}>{fieldValue}</View>;
   }
 
   return (
